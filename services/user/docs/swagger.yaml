@@ -1,0 +1,367 @@
+definitions:
+  domain.Quota:
+    properties:
+      limit:
+        type: integer
+      used:
+        type: integer
+    type: object
+  domain.QuotaInfo:
+    properties:
+      ai_description:
+        $ref: '#/definitions/domain.Quota'
+      ai_video:
+        $ref: '#/definitions/domain.Quota'
+      auto_posting:
+        $ref: '#/definitions/domain.Quota'
+    type: object
+  domain.User:
+    properties:
+      ai_description_quota_limit:
+        type: integer
+      ai_description_quota_used:
+        type: integer
+      ai_video_quota_limit:
+        type: integer
+      ai_video_quota_used:
+        type: integer
+      auto_posting_quota_limit:
+        type: integer
+      auto_posting_quota_used:
+        type: integer
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      tier:
+        $ref: '#/definitions/domain.UserTier'
+      updated_at:
+        type: string
+    type: object
+  domain.UserTier:
+    enum:
+    - free
+    - pro
+    type: string
+    x-enum-varnames:
+    - UserTierFree
+    - UserTierPro
+  dto.AdminQuotaResetResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  dto.QuotaCheckResponse:
+    properties:
+      has_quota:
+        type: boolean
+    type: object
+  dto.QuotaUsageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.TierUpgradeResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.UserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.UserResponseData'
+      message:
+        type: string
+    type: object
+  dto.UserResponseData:
+    properties:
+      quota_info:
+        $ref: '#/definitions/domain.QuotaInfo'
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+info:
+  contact: {}
+paths:
+  /admin/reset-monthly-quotas:
+    post:
+      consumes:
+      - application/json
+      description: Reset all users' monthly quotas (Admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AdminQuotaResetResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Reset monthly quotas (Admin)
+      tags:
+      - admin
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details and quota information by user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get user by ID
+      tags:
+      - users
+  /users/{id}/check-ai-description-quota:
+    get:
+      consumes:
+      - application/json
+      description: Check if user has AI description quota available
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaCheckResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Check AI description quota
+      tags:
+      - quotas
+  /users/{id}/check-ai-video-quota:
+    get:
+      consumes:
+      - application/json
+      description: Check if user has AI video quota available
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaCheckResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Check AI video quota
+      tags:
+      - quotas
+  /users/{id}/check-auto-posting-quota:
+    get:
+      consumes:
+      - application/json
+      description: Check if user has auto posting quota available
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaCheckResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Check auto posting quota
+      tags:
+      - quotas
+  /users/{id}/upgrade-pro:
+    post:
+      consumes:
+      - application/json
+      description: Upgrade user account to PRO tier
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TierUpgradeResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Upgrade to PRO tier
+      tags:
+      - users
+  /users/{id}/use-ai-description:
+    post:
+      consumes:
+      - application/json
+      description: Use one AI description generation quota
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaUsageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Use AI description quota
+      tags:
+      - quotas
+  /users/{id}/use-ai-video:
+    post:
+      consumes:
+      - application/json
+      description: Use one AI video generation quota
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaUsageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Use AI video quota
+      tags:
+      - quotas
+  /users/{id}/use-auto-posting:
+    post:
+      consumes:
+      - application/json
+      description: Use one auto posting quota
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.QuotaUsageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Use auto posting quota
+      tags:
+      - quotas
+  /users/email/{email}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details and quota information by email
+      parameters:
+      - description: User Email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get user by email
+      tags:
+      - users
+swagger: "2.0"

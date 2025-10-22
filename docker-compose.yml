@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # Event Streaming Platform
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - smm-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    ports:
+      - "9092:9092"
+    networks:
+      - smm-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "8090:8080"
+    networks:
+      - smm-network
+
+  # Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.48
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - smm-network
+
+  # Databases
+  postgres-auth:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: auth_service
+      POSTGRES_USER: smm_user
+      POSTGRES_PASSWORD: smm_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+      - ./scripts/init-auth-db.sql:/docker-entrypoint-initdb.d/init-auth-db.sql
+    networks:
+      - smm-network
+
+  postgres-user:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: smm_user
+      POSTGRES_PASSWORD: smm_password
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+      - ./scripts/init-user-db.sql:/docker-entrypoint-initdb.d/init-user-db.sql
+    networks:
+      - smm-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6377:6379"
+    networks:
+      - smm-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .  # Change context to project root
+      dockerfile: services/auth/Dockerfile
+    environment:
+      - DB_HOST=postgres-auth
+      - DB_PORT=5432
+      - DB_USER=smm_user
+      - DB_PASSWORD=smm_password
+      - DB_NAME=auth_service
+      - JWT_SECRET=your-super-secret-jwt-key-here-change-in-production
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENABLE_TRACING=true
+      - JAEGER_AGENT_HOST=jaeger:4317
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-auth
+      - kafka
+      - redis
+      - jaeger
+    networks:
+      - smm-network
+
+  # # User Service
+  # user-service:
+  #   build:
+  #     context: .  # Change context to project root
+  #     dockerfile: services/user/Dockerfile
+  #   environment:
+  #     - DB_HOST=postgres-user
+  #     - DB_PORT=5432
+  #     - DB_USER=smm_user
+  #     - DB_PASSWORD=smm_password
+  #     - DB_NAME=user_service
+  #     - KAFKA_BROKERS=kafka:9092
+  #     - ENABLE_TRACING=true
+  #     - JAEGER_AGENT_HOST=jaeger:4317
+  #   ports:
+  #     - "8082:8082"
+  #   depends_on:
+  #     - postgres-user
+  #     - kafka
+  #     - jaeger
+  #   networks:
+  #     - smm-network
+
+volumes:
+  postgres_auth_data:
+  postgres_user_data:
+
+networks:
+  smm-network:
+    driver: bridge
